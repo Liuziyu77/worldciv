@@ -64,3 +64,12 @@ WRI Global Power Plant Database, plants >= 100 MW, grouped by fuel into the map'
 - Hexes are 121 km across: countries and islands smaller than a hex may not appear.
 - Population, city yields and country borders are modelled at hex resolution, not census-exact.
 - Antarctica is drawn but has no statistics.
+
+## Validation
+
+```bash
+python3.12 pipeline/check_data.py
+```
+
+Checks every array length, owner/rank/water/cover range, state and nation totals, city cells and country
+matches, lens domains, resource links and source ids. Prints a data-quality report and exits 1 on failure.
