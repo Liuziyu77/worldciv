@@ -93,6 +93,7 @@ python3.12 pipeline/build_stats.py        # ~5 s → web/data/*.json
 python3.12 pipeline/fetch_data.py         # Natural Earth, Köppen, World Bank, WRI, terrain tiles (cached)
 python3.12 pipeline/build_world.py        # rasterise countries/lakes/climate, sample 13 points per hex
 python3.12 pipeline/build_stats.py        # country panels, cities, population model, lenses, power plants
+python3.12 pipeline/check_data.py         # validate web/data against docs/DATA.md (exit 1 on failure)
 ```
 
 ## How it works
@@ -103,6 +104,7 @@ pipeline/
   build_world.py    0.05° rasters of countries, lakes, urban areas and climate; 13 samples per hex;
                     elevation/relief/water/biome → pipeline/out/world.json + cells.npz
   build_stats.py    World Bank series, city list, population model, coast distance, lenses, plants
+  check_data.py     contract checks and a data-quality report over web/data
   lib/geo.py        GeoJSON helpers and polygon rasterisation (numpy + Pillow only)
 web/                static site: js/ (map renderer, banners, panels, Almanac), data/ (generated JSON)
 docs/DATA.md        the data contracts and the notes behind each table
@@ -258,6 +260,7 @@ python3.12 pipeline/build_stats.py        # 约 5 秒 → web/data/*.json
 python3.12 pipeline/fetch_data.py         # Natural Earth、Köppen、World Bank、WRI、地形瓦片（有缓存）
 python3.12 pipeline/build_world.py        # 栅格化国家/湖泊/气候，每格 13 个采样点
 python3.12 pipeline/build_stats.py        # 国家面板、城市、人口模型、透镜、电厂
+python3.12 pipeline/check_data.py         # 按 docs/DATA.md 校验 web/data（失败时退出码 1）
 ```
 
 ## 工作原理
@@ -268,6 +271,7 @@ pipeline/
   build_world.py    0.05° 的国家、湖泊、建成区、气候栅格；每格 13 个采样点；
                     高程/起伏/水体/生物群系 → pipeline/out/world.json + cells.npz
   build_stats.py    World Bank 序列、城市表、人口模型、海岸距离、透镜、电厂
+  check_data.py     对 web/data 做契约校验与数据质量报告
   lib/geo.py        GeoJSON 工具与多边形栅格化（只依赖 numpy 与 Pillow）
 web/                静态网站：js/（地图渲染、旗标、面板、百科）、data/（生成的 JSON）
 docs/DATA.md        每个数据文件的格式与各表的构建说明

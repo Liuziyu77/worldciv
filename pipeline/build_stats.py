@@ -317,6 +317,32 @@ def main():
     print("cities")
     places = read_json(os.path.join(CACHE, "places.geojson"))["features"]
     by_abbr = {s["abbr"]: i for i, s in enumerate(stats)}
+
+    def snap_cell(cell, abbr):
+        """Nearest hex of `abbr` when the city's coordinate lands in water or across a border."""
+        if cell < 0:
+            return cell
+        o = owner[cell]
+        if o >= 0 and states[o]["abbr"] == abbr:
+            return cell
+        r0, c0 = divmod(cell, cols)
+        x0, y0 = grid.xy(cell)
+        best, bestd = cell, 1e30
+        for dr in range(-3, 4):
+            for dc in range(-3, 4):
+                rr, cc = r0 + dr, c0 + dc
+                if not (0 <= rr < rows and 0 <= cc < cols):
+                    continue
+                j = rr * cols + cc
+                oj = owner[j]
+                if oj < 0 or states[oj]["abbr"] != abbr:
+                    continue
+                xj, yj = grid.xy(j)
+                d = (xj - x0) ** 2 + (yj - y0) ** 2
+                if d < bestd:
+                    best, bestd = j, d
+        return best
+
     cities = []
     for f in places:
         p = f["properties"]
@@ -332,10 +358,10 @@ def main():
         if lon is None or lat is None:
             continue
         x, y = grid.km(lon, lat)
-        cell = grid.cell_at(x, y)
+        st = stats[ci]
+        cell = snap_cell(grid.cell_at(x, y), st["abbr"])
         if cell < 0:
             continue
-        st = stats[ci]
         cpop = st["population"] or 0
         share = min(1.0, pop / cpop) if cpop > 0 else 0.0
         cities.append({
@@ -474,6 +500,17 @@ def main():
     def land_vals(arr):
         return [float(arr[i]) for i in range(n) if owner[i] >= 0 and np.isfinite(arr[i])]
 
+    def country_lens(getter):
+        """Per-hex array from a country field, null where the country has no value."""
+        arr = np.full(n, np.nan)
+        for i in range(n):
+            o = owner[i]
+            if o >= 0:
+                v = getter(stats[o])
+                if v is not None and np.isfinite(v):
+                    arr[i] = v
+        return arr
+
     climate_group = np.zeros(n)
     for i in range(n):
         c = code[i][:1]
@@ -483,7 +520,7 @@ def main():
 
     def add(id, group, name, icon, emoji, unit, fmt, scale, ramp, higher, source, desc, values, domain=None,
             categories=None):
-        vals = [round(float(v), 3) if np.isfinite(v) else 0 for v in values]
+        vals = [round(float(v), 3) if v is not None and np.isfinite(v) else None for v in values]
         dom = list(domain) if domain else pct_domain(land_vals(np.asarray(values, dtype=float)))
         floor = {"density": 0.5, "population": 1, "gdp_pc": 100, "gdp": 1e6, "life": 30, "coast": 0.5}.get(id)
         if floor is not None and dom[0] < floor:
@@ -506,27 +543,27 @@ def main():
     add("gdp_pc", "prosperity", "GDP per person", "l-income", "💵", "US$", "usd", "log",
         ["#08213b", "#155e75", "#2f9e8f", "#b8c65a", "#f6d365"], "higher", "world_bank",
         "Gross domestic product per resident (World Bank), current US$. All hexes of a country share its value.",
-        np.array([stats[owner[i]]["gdp_pc"] or 0 if owner[i] >= 0 else 0 for i in range(n)]))
+        country_lens(lambda st: (st["gdp"] / st["population"]) if st.get("gdp") and st.get("population") else None))
     add("gdp", "prosperity", "Economy size", "y-gold", "💰", "US$", "usd", "log",
         ["#1a1035", "#4a2b6b", "#8c3f8f", "#d9647a", "#f9b24a"], "higher", "world_bank",
         "Gross domestic product (World Bank), current US$, the same on every hex of a country.",
-        np.array([stats[owner[i]]["gdp"] or 0 if owner[i] >= 0 else 0 for i in range(n)]))
+        country_lens(lambda st: st.get("gdp")))
     add("urban", "people", "Urban share", "l-developed", "🏙️", "%", "pct", "linear",
         ["#20303f", "#3f6478", "#6fa3a8", "#c8d98a", "#f3e2a0"], "higher", "world_bank",
         "Share of the country's people who live in cities (World Bank).",
-        np.array([(stats[owner[i]]["urban"] or 0) / 100 if owner[i] >= 0 else 0 for i in range(n)]))
+        country_lens(lambda st: (st["urban"] / 100) if st.get("urban") is not None else None))
     add("life", "life", "Life expectancy", "l-age", "⏳", "years", "years", "linear",
         ["#2a1b2f", "#5c2f4a", "#a44a56", "#e08a5e", "#f7d98a"], "higher", "world_bank",
         "Life expectancy at birth (World Bank), in years.",
-        np.array([stats[owner[i]]["life"] or 0 if owner[i] >= 0 else 0 for i in range(n)]))
+        country_lens(lambda st: st.get("life")))
     add("elec", "life", "Electricity access", "l-broadband", "⚡", "%", "pct", "linear",
         ["#1b1b24", "#3c3c52", "#6e6a86", "#b8a86a", "#ffe28a"], "higher", "world_bank",
         "Share of people with access to electricity (World Bank).",
-        np.array([(stats[owner[i]]["elec"] or 0) / 100 if owner[i] >= 0 else 0 for i in range(n)]))
+        country_lens(lambda st: (st["elec"] / 100) if st.get("elec") is not None else None))
     add("net", "knowledge", "Internet users", "l-broadband", "🌐", "%", "pct", "linear",
         ["#101a2b", "#1f415f", "#2f7f96", "#7fc7b0", "#e6f7c8"], "higher", "world_bank",
         "Share of people using the internet (World Bank).",
-        np.array([(stats[owner[i]]["net"] or 0) / 100 if owner[i] >= 0 else 0 for i in range(n)]))
+        country_lens(lambda st: (st["net"] / 100) if st.get("net") is not None else None))
     add("elev", "land", "Elevation", "terrain", "⛰️", "m", "int", "linear",
         ["#173d2b", "#4f7a35", "#a39c58", "#b09366", "#8c8078", "#e8eef2"], "neutral", "terrarium",
         "Mean elevation of the hex in metres, from the terrain tiles (SRTM/GEBCO).",

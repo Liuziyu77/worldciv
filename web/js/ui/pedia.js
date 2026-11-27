@@ -40,14 +40,18 @@ export function initPedia(data) {
       / or ⌘K to search · L to cycle lenses · R to show or hide resources · ? for all shortcuts · Esc to close.</p>
       <p>The address bar always holds a link to what you're looking at (lens, selection and view); use <i>Share</i> to copy it
       or to download a picture.</p>`,
-    Yields: () => `
+    Yields: () => {
+      const cov = (key) => data.states ? data.states.filter((s) => (s.yields?.[key] || 0) > 0).length + "/" + data.states.length + " countries" : "";
+      return `
       ${h2("y-production", "⚙️", "Yields")}
-      <p>Civilization's yields mapped onto real measures. Job-based yields count <i>residents</i> employed in an industry
-      (where workers live, not where they work). <b>Gold is GDP</b>: output per year, counted where the work is done.</p>
-      <table>${data.nation.yields.map((y) => `<tr><td class="ic" style="color:${esc(y.color)}">${glyph(y, 26)}</td><td><b style="color:${esc(y.color)}">${esc(y.label)}${y.key === "gold" ? " (GDP)" : ""}</b><br>${esc(y.description)}</td></tr>`).join("")}</table>
+      <p>Civilization's yields mapped onto real measures: <b>Food</b> is cereal production, <b>Production</b> is
+      manufacturing value added, <b>Gold</b> is GDP, <b>Science</b> is R&amp;D spending and <b>Culture</b> is international
+      tourist arrivals. All are country totals from the World Bank; a missing value shows "–", never 0.</p>
+      <table>${data.nation.yields.map((y) => `<tr><td class="ic" style="color:${esc(y.color)}">${glyph(y, 26)}</td><td><b style="color:${esc(y.color)}">${esc(y.label)}${y.key === "gold" ? " (GDP)" : ""}</b><br>${esc(y.description)}${cov(y.key) ? `<br><span class="muted">Coverage: ${esc(cov(y.key))}</span>` : ""}</td></tr>`).join("")}</table>
       <h4>Who works where</h4>
       <p>Employment shares (agriculture, industry, services) come from the World Bank's modelled ILO estimates. A city's
-      workforce is its country's workforce shared out by the city's share of the population.</p>`,
+      workforce is its country's workforce shared out by the city's share of the population.</p>`;
+    },
     Countries: () => `
       ${h2("terrain", "🗺️", "Countries")}
       <p>Click any land hex without a city to open its country. A country's numbers are its World Bank totals

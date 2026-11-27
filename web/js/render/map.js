@@ -559,7 +559,7 @@ function drawBandEdge(ctx, w, r0, r1, c0, c1, s) {
 
 export function stateLabelAlpha(lbl, Rpx, s) {
   const px = lbl.size * s;
-  return smoothstep(8, 13, px) * (1 - smoothstep(13, 22, Rpx));
+  return smoothstep(4.5, 8, px) * (1 - smoothstep(13, 22, Rpx));
 }
 
 // Cells per state (for sizing postal-code labels of small states). Cached on w.

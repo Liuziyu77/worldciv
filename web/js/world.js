@@ -294,7 +294,7 @@ function computeStateLabels(w) {
     const bestFit = (text) => {
       let pick = null;
       for (const ang of tries) {
-        const f = fitAlong(w, s, a, ang, text, Math.min(0.62 * across(ang), 0.75 * depth, 150));
+        const f = fitAlong(w, s, a, ang, text, Math.min(0.62 * across(ang), 0.75 * depth, 260));
         const score = f.size * (ang === angle ? 1.1 : 1);
         if (!pick || score > pick.score) pick = { ...f, text, angle: ang, score };
       }
