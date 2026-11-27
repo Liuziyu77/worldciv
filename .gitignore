@@ -1,0 +1,10 @@
+pipeline/cache/
+pipeline/out/
+__pycache__/
+*.pyc
+web/.vercel/
+web/.env.local
+.DS_Store
+.vercel/
+.vercel
+.env*
