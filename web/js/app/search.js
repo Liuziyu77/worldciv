@@ -23,17 +23,29 @@ export function initSearch(opts) {
     entries.push({ kind: "city", city: c, name: c.name, n: norm(c.name), full: norm(c.full), pop: c.population || 0,
       sub: c.full || "", label: c.name });
   }
+  // Common short names that Natural Earth does not use as the primary name.
+  const ALIAS = {
+    USA: "united states us u.s. america", GBR: "uk britain great britain england",
+    ARE: "uae emirates", COD: "drc democratic republic of the congo", COG: "republic of the congo congo",
+    CAF: "car central african republic", CZE: "czech republic czechia", CIV: "ivory coast cote divoire",
+    KOR: "south korea korea", PRK: "north korea", NLD: "holland", MKD: "macedonia", SWZ: "eswatini swaziland",
+    BIH: "bosnia", TTO: "trinidad", VAT: "vatican", PSE: "palestine", GMB: "the gambia",
+  };
   (opts.states || []).forEach((s, index) => {
     if (!s) return;
-    entries.push({ kind: "state", index, name: s.name, n: norm(s.name), full: norm(s.abbr), abbr: (s.abbr || "").toLowerCase(),
-      pop: s.population || 0, sub: "State", label: s.name });
+    const alias = ALIAS[s.abbr] || "";
+    entries.push({ kind: "state", index, name: s.name, n: norm(s.name), full: norm((s.abbr || "") + " " + alias), alias: norm(alias), abbr: (s.abbr || "").toLowerCase(),
+      pop: s.population || 0, sub: "Country", label: s.name });
   });
 
   let results = [];
   let sel = -1;
+  const defaultList = entries.filter((e) => e.kind === "state").sort((a, b) => b.pop - a.pop).slice(0, 12);
+  let showingDefault = false;
 
   function score(e, q) {
     if (e.abbr && e.abbr === q) return 0;
+    if (e.alias && (" " + e.alias + " ").includes(" " + q + " ")) return 0.5;
     if (e.n.startsWith(q)) return e.n === q ? 0 : 1;
     if ((" " + e.n).includes(" " + q)) return 2;
     if ((" " + e.full).includes(" " + q)) return 3;
@@ -97,21 +109,34 @@ export function initSearch(opts) {
     box.hidden = true;
     results = [];
     sel = -1;
+    showingDefault = false;
     input.setAttribute("aria-expanded", "false");
     input.removeAttribute("aria-activedescendant");
   }
 
   input.addEventListener("input", () => {
-    results = query(input.value);
-    sel = results.length ? 0 : -1;
+    if (input.value.trim()) {
+      showingDefault = false;
+      results = query(input.value);
+      sel = results.length ? 0 : -1;
+    } else {
+      showingDefault = true;
+      results = defaultList;
+      sel = -1;
+    }
     render();
   });
   input.addEventListener("focus", () => {
     if (input.value.trim()) {
+      showingDefault = false;
       results = query(input.value);
       sel = results.length ? 0 : -1;
-      render();
+    } else {
+      showingDefault = true;
+      results = defaultList;
+      sel = -1;
     }
+    render();
   });
   input.addEventListener("keydown", (e) => {
     if (e.key === "ArrowDown" || e.key === "ArrowUp") {
@@ -122,7 +147,7 @@ export function initSearch(opts) {
       box.querySelector(".sel")?.scrollIntoView({ block: "nearest" });
     } else if (e.key === "Enter") {
       e.preventDefault();
-      if (results.length) choose(Math.max(0, sel));
+      if (results.length && sel >= 0) choose(sel);
     } else if (e.key === "Escape") {
       e.preventDefault();
       e.stopPropagation();

@@ -231,6 +231,14 @@ export function initLensDock(opts) {
     return counts;
   };
   const noteHtml = (l) => (l.note ? `<div class="lg-note">${esc(l.note)}</div>` : "");
+  // How many land hexes have no value for this lens (missing World Bank data, not zero).
+  function missingNote(l) {
+    if (!l?.values) return "";
+    let n = 0;
+    const owner = w.raw.owner;
+    for (let i = 0; i < l.values.length; i++) if (l.values[i] == null && owner[i] >= 0) n++;
+    return n ? `<div class="lg-note">${n.toLocaleString()} land hexes have no data (shown grey)</div>` : "";
+  }
 
   function renderCategoricalLegend(l) {
     const counts = catCounts(l);
@@ -306,6 +314,7 @@ export function initLensDock(opts) {
       <div class="ticks">${ticks}</div>
       ${l.unit ? `<div class="lg-unit">${esc(l.unit)}</div>` : ""}
       <div class="lg-meta">${hib}<span class="src">${l.unit ? esc(l.unit) + " · " : ""}${sourceLine(l)}</span></div>
+      ${missingNote(l)}
       <div class="lg-hint" aria-live="polite">Hover or drag the scale to show only that range</div>`;
     legend.querySelector(".lg-close").onclick = () => opts.onPick(null);
     legend.classList.toggle("expanded", legendExpanded);

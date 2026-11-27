@@ -149,6 +149,14 @@ def main():
     if too_big:
         fail(f"cities larger than their country: {too_big[:5]}")
 
+    # city yields must not add up to more than their country's total
+    city_gold = {}
+    for c in cities:
+        city_gold[c["states"][0]] = city_gold.get(c["states"][0], 0) + c["yields"].get("gold", 0)
+    over = [st["name"] for st in states if city_gold.get(st["abbr"], 0) > (st["yields"].get("gold", 0) or 0) * 1.001]
+    if over:
+        fail(f"city yields exceed the country total in: {over[:5]}")
+
     # --- lenses.json -----------------------------------------------------------------------------------------
     for l in lenses["lenses"]:
         vals = l.get("values") or []

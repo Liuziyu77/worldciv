@@ -362,8 +362,6 @@ def main():
         cell = snap_cell(grid.cell_at(x, y), st["abbr"])
         if cell < 0:
             continue
-        cpop = st["population"] or 0
-        share = min(1.0, pop / cpop) if cpop > 0 else 0.0
         cities.append({
             "id": str(p.get("NE_ID") or p.get("NAME") or len(cities)),
             "name": p.get("NAME"),
@@ -374,13 +372,7 @@ def main():
             "capital": bool(cap),
             "x": round(x, 1), "y": round(y, 1), "cell": cell,
             "population": pop,
-            "yields": {kk: (st["yields"].get(kk) or 0) * share for kk in nation_tot["yields"]},
-            "jobs": {kk: (st["jobs"].get(kk) or 0) * share for kk in nation_tot["jobs"]},
-            "employed": (st["employed"] or 0) * share,
-            "gdp": (st["gdp"] or 0) * share,
-            "urban": st.get("urban"), "life": st.get("life"), "net": st.get("net"),
-            "elec": st.get("elec"), "researchers": st.get("researchers"),
-            "growth": None,
+            "_ci": ci,
         })
     # drop duplicate NE ids, keep the biggest
     byid = {}
@@ -388,6 +380,29 @@ def main():
         if c["id"] not in byid or c["population"] > byid[c["id"]]["population"]:
             byid[c["id"]] = c
     cities = sorted(byid.values(), key=lambda c: -c["population"])
+
+    # A city's share of its country is its population over the country population, but districts can overlap
+    # (metro + core); capping the denominator by the sum of mapped city populations keeps the yields summing
+    # to no more than the country total.
+    city_pop_sum = defaultdict(float)
+    for c in cities:
+        city_pop_sum[c["_ci"]] += c["population"]
+    for c in cities:
+        ci = c.pop("_ci")
+        st = stats[ci]
+        cpop = st["population"] or 0
+        denom = max(cpop, city_pop_sum[ci])
+        share = min(1.0, c["population"] / denom) if denom > 0 else 0.0
+        c["yields"] = {kk: (st["yields"].get(kk) or 0) * share for kk in nation_tot["yields"]}
+        c["jobs"] = {kk: (st["jobs"].get(kk) or 0) * share for kk in nation_tot["jobs"]}
+        c["employed"] = (st["employed"] or 0) * share
+        c["gdp"] = (st["gdp"] or 0) * share
+        c["urban"] = st.get("urban")
+        c["life"] = st.get("life")
+        c["net"] = st.get("net")
+        c["elec"] = st.get("elec")
+        c["researchers"] = st.get("researchers")
+        c["growth"] = None
     print(f"  {len(cities)} cities")
 
     # --- population model (for the density lens) ------------------------------------------------------------------
